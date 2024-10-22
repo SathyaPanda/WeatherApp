@@ -77,6 +77,18 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
     kapt(libs.hilt.android.compiler)
+    testImplementation (libs.kotlinx.coroutines.test)
+    testImplementation ("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
+    testImplementation ("com.google.truth:truth:1.1.3")
+    testImplementation ("io.mockk:mockk:1.12.3")
+    testImplementation ("androidx.datastore:datastore-core:1.0.0")
+    testImplementation ("org.robolectric:robolectric:4.10.3")
+    testImplementation ("androidx.test:core:1.4.0")
+    androidTestImplementation ("androidx.test.ext:junit:1.1.5")
+    androidTestImplementation ("androidx.test:core:1.4.0")
+    androidTestImplementation ("androidx.test:runner:1.5.2")
+    androidTestImplementation ("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.6.0")
+    androidTestImplementation ("com.google.truth:truth:1.1.3")
 }
 
 // Allow references to generated code

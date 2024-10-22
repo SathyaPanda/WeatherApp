@@ -13,4 +13,11 @@ interface WeatherApi {
     ) : Response<WeatherModel>
 
 
+    @GET("data/2.5/weather")
+    suspend fun getWeatherDataWithCordinates(
+        @Query("lat") latitude : String,
+        @Query("lon") longitude : String,
+        @Query("appid") appId: String
+    ) : Response<WeatherModel>
+
 }

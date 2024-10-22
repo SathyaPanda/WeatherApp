@@ -1,14 +1,18 @@
 package com.sathya.weatherapp
 
-import android.annotation.SuppressLint
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
+import android.location.LocationManager
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -20,7 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModelProvider
+import androidx.core.app.ActivityCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.sathya.weatherapp.ui.screens.WeatherPage
@@ -40,19 +44,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-
-        // Set up the permission launcher
-        val locationPermissionRequest = registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
-        ) { isGranted ->
-            if (isGranted) {
-                // Permission is granted, fetch the weather based on location
-                fetchWeatherBasedOnLocation()
-            } else {
-                // Permission is denied, handle the case
-                Toast.makeText(this, "Location permission denied", Toast.LENGTH_SHORT).show()
-            }
-        }
 
         enableEdgeToEdge()
         setContent {
@@ -87,32 +78,94 @@ class MainActivity : ComponentActivity() {
         }
 
         Box(
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier
+                .fillMaxSize()
                 .background(brush = skyGradient)
         ) {
             WeatherPage(
-                modifier = Modifier.padding(top = 20.dp).padding(10.dp),
+                modifier = Modifier
+                    .padding(top = 20.dp)
+                    .padding(10.dp),
                 viewModel = weatherViewModel
             )
         }
     }
 
-    @SuppressLint("MissingPermission") // Since we check permission before calling
-    private fun fetchWeatherBasedOnLocation() {
-        Log.i("SAT**", "location")
-        fusedLocationClient.lastLocation.addOnSuccessListener { location: Location ->
-            location.let {
-                // Use the latitude and longitude to fetch the weather data
-                val latitude = it.latitude
-                val longitude = it.longitude
-                fetchWeatherForLocation(latitude, longitude)
-            } ?: run {
-                Toast.makeText(this, "Failed to retrieve location", Toast.LENGTH_SHORT).show()
+    fun getCurrentLocation(context: Context, onLocationReceived: (Location?) -> Unit) {
+        if (checkPermissions()) {
+            if (isLocationEnabled()) {
+                if (ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.ACCESS_COARSE_LOCATION
+                    ) != PackageManager.PERMISSION_GRANTED
+                ) {
+                    requestPermission()
+                    return
+                }
+                fusedLocationClient.lastLocation.addOnCompleteListener(this) { task ->
+                    val location: Location? = task.result
+                    if (location == null) {
+                        Toast.makeText(this, "null received", Toast.LENGTH_SHORT).show()
+                    } else {
+                        onLocationReceived(location)  // Use callback to return location
+                    }
+                }
+            } else {
+                Toast.makeText(this, "Turn on Location", Toast.LENGTH_SHORT).show()
+                val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+                startActivity(intent)
+            }
+        } else {
+            requestPermission()
+        }
+    }
+
+
+    private fun isLocationEnabled() : Boolean{
+        val locationManager : LocationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) || locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+    }
+
+    private fun requestPermission(){
+        ActivityCompat.requestPermissions(
+            this, arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION),
+                PERMISSION_REQUEST_ACCESS_LOCATION)
+    }
+
+    companion object{
+        private const val PERMISSION_REQUEST_ACCESS_LOCATION = 100
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if(requestCode == PERMISSION_REQUEST_ACCESS_LOCATION){
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                Toast.makeText(applicationContext, "Granted", Toast.LENGTH_SHORT).show()
+            }
+            else{
+                Toast.makeText(applicationContext, "Denied", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
+    private fun checkPermissions() : Boolean{
+        return (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+                && ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED)
+    }
+
     private fun fetchWeatherForLocation(lat: Double, lon:Double){
         Toast.makeText(this, "Fetching weather for location: $lat, $lon", Toast.LENGTH_SHORT).show()
+
+        weatherViewModel.getWeatherDataFromLatitudeAndLongitude(lat.toString(), lon.toString())
     }
 }

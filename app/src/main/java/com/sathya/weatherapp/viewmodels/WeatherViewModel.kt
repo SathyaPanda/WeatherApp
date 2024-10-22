@@ -56,7 +56,24 @@ class WeatherViewModel @Inject constructor(
             try {
                 val response = weatherApi.getWeather(city, Constants.appId)
                 if (response.isSuccessful){
-                    Log.i("WEATHER", "Response : " + response.body().toString())
+                    response.body()?.let {
+                        _weatherResult.value = NetworkResponse.Success(it)
+                    }
+                }else {
+                    _weatherResult.value = NetworkResponse.Error("Failed to load data")
+                }
+            }catch (e : Exception){
+                _weatherResult.value = NetworkResponse.Error("Failed to load data")
+            }
+        }
+    }
+
+    fun getWeatherDataFromLatitudeAndLongitude(lat : String, lon: String){
+        _weatherResult.value = NetworkResponse.Loading
+        viewModelScope.launch {
+            try {
+                val response = weatherApi.getWeatherDataWithCordinates(lat, lon, Constants.appId)
+                if (response.isSuccessful){
                     response.body()?.let {
                         _weatherResult.value = NetworkResponse.Success(it)
                     }
